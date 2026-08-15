@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Buddy</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#E67A40">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Nunito+Sans:wght@400;600;700;800&display=swap');
+  :root{
+    --bg:#F7F1E7; --card:#FFFDF9; --card-warm:#FDEFDF; --ink:#3E2C23; --sub:#9C8A7B;
+    --line:#EADFCF; --accent:#E67A40; --accent-deep:#C85A2B; --good:#7BAE7F; --bad:#D8654F;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Nunito Sans',-apple-system,sans-serif;
+    background:var(--bg); color:var(--ink);
+    max-width:480px; margin:0 auto; min-height:100vh;
+    display:flex; flex-direction:column;
+  }
+  header{
+    padding:16px 18px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--bg); position:sticky; top:0; z-index:5;
+  }
+  header .logo{font-family:'Fraunces',serif; font-size:24px; font-weight:700; letter-spacing:.2px; color:var(--accent-deep);}
+  main{flex:1; overflow-y:auto; padding-bottom:76px;}
+  .screen{display:none; padding:20px 18px;}
+  .screen.active{display:block;}
+
+  /* Join screen */
+  .join-box{max-width:340px; margin:30px auto 0; text-align:center;}
+  .join-box .emoji{font-size:60px;}
+  .join-box h1{font-family:'Fraunces',serif; font-size:30px; margin:10px 0 4px; color:var(--ink);}
+  .join-box p{color:var(--sub); font-size:14px; margin-bottom:26px; line-height:1.4;}
+  input, select{
+    width:100%; padding:13px 15px; border:1.5px solid var(--line); border-radius:14px;
+    font-size:15px; margin-bottom:10px; background:var(--card); color:var(--ink);
+    font-family:inherit;
+  }
+  input:focus{outline:none; border-color:var(--accent);}
+  button{
+    width:100%; padding:13px; border:none; border-radius:14px; font-size:15px; font-weight:700;
+    background:var(--accent); color:#fff; cursor:pointer; font-family:inherit;
+    box-shadow:0 4px 14px rgba(230,122,64,.28);
+  }
+  button.secondary{background:var(--card-warm); color:var(--accent-deep); box-shadow:none;}
+  button:disabled{opacity:.5; box-shadow:none;}
+  .tabrow{display:flex; gap:8px; margin-bottom:16px; background:var(--card-warm); padding:4px; border-radius:14px;}
+  .tabrow button{flex:1; box-shadow:none; padding:10px; border-radius:11px;}
+  .tabrow button.inactive{background:transparent; color:var(--sub);}
+
+  /* Home / feed */
+  .ring{
+    width:120px; height:120px; border-radius:50%; margin:6px auto 12px;
+    display:flex; align-items:center; justify-content:center; font-size:56px;
+    background:conic-gradient(var(--accent) calc(var(--health,80)*1%), var(--card-warm) 0);
+    padding:7px;
+  }
+  .ring-inner{width:100%; height:100%; background:var(--card); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:inset 0 0 0 1px var(--line);}
+  .buddy-name{text-align:center; font-family:'Fraunces',serif; font-weight:700; font-size:21px; margin-bottom:2px;}
+  .buddy-sub{text-align:center; color:var(--sub); font-size:13px; margin-bottom:22px;}
+  .stats{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:22px;}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px;}
+  .stat .label{font-size:11px; color:var(--sub); text-transform:uppercase; letter-spacing:.6px; font-weight:700;}
+  .bar{height:7px; border-radius:6px; background:var(--card-warm); margin-top:7px; overflow:hidden;}
+  .bar-fill{height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-deep)); border-radius:6px;}
+  .actions{display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-bottom:24px;}
+  .actions button{padding:14px 4px; font-size:22px; border-radius:16px; background:var(--card); border:1px solid var(--line); color:var(--ink); box-shadow:none;}
+  .actions .lbl{display:block; font-size:10.5px; margin-top:4px; font-weight:700; color:var(--sub);}
+  .feed-item{border-bottom:1px solid var(--line); padding:12px 2px; font-size:14px;}
+  .feed-item .t{color:var(--sub); font-size:11px; margin-top:2px;}
+  .section-label{font-size:11px; color:var(--sub); text-transform:uppercase; letter-spacing:.6px; font-weight:800; margin-bottom:10px;}
+
+  /* Chat */
+  .msg-list{display:flex; flex-direction:column; gap:9px; margin-bottom:12px;}
+  .bubble{max-width:75%; padding:10px 14px; border-radius:18px; font-size:14px; line-height:1.4;}
+  .bubble.me{align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:5px;}
+  .bubble.them{align-self:flex-start; background:var(--card-warm); color:var(--ink); border-bottom-left-radius:5px;}
+  .bubble .sender{font-size:10px; opacity:.7; margin-bottom:2px; display:block; font-weight:700;}
+  .chat-input{display:flex; gap:8px; position:sticky; bottom:0; background:var(--bg); padding-top:8px;}
+  .chat-input input{margin-bottom:0;}
+  .chat-input button{width:auto; padding:12px 18px;}
+
+  nav.tabbar{
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:480px; background:var(--card); border-top:1px solid var(--line);
+    display:flex; z-index:10; padding:4px 0;
+  }
+  nav.tabbar button{
+    flex:1; background:transparent; color:var(--sub); font-size:22px; padding:8px 0; border-radius:0; box-shadow:none;
+  }
+  nav.tabbar button.active{color:var(--accent-deep);}
+  .hint{font-size:12px; color:var(--sub); text-align:center; margin-top:10px; line-height:1.4;}
+  .full-msg{background:#FBEAE3; border:1px solid #EEC4B4; padding:12px; border-radius:14px; font-size:13px; color:var(--accent-deep); margin-bottom:14px;}
+  .admin-link{position:fixed; bottom:6px; right:10px; font-size:10px; color:var(--line); text-decoration:none;}
+  .leave-btn{background:var(--card-warm); color:var(--bad); box-shadow:none; margin-top:20px;}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">buddy</span>
+  <span id="codeBadge" style="font-size:12px; color:var(--sub);"></span>
+</header>
+
+<main>
+
+  <!-- JOIN SCREEN -->
+  <section class="screen active" id="screen-join">
+    <div class="join-box">
+      <div class="emoji">🐣</div>
+      <h1>Buddy</h1>
+      <p>A pet you raise together. Create one or join with a code.</p>
+      <div class="tabrow">
+        <button id="tabCreate" onclick="setJoinMode('create')">Create</button>
+        <button id="tabJoin" class="inactive" onclick="setJoinMode('join')">Join</button>
+      </div>
+      <input id="nameInput" placeholder="Your name" maxlength="20">
+      <input id="buddyNameInput" placeholder="Buddy's name" maxlength="20">
+      <input id="codeInput" placeholder="Buddy code (e.g. AB3XZ)" maxlength="6" style="display:none; text-transform:uppercase;">
+      <div id="joinFullMsg" class="full-msg" style="display:none;">This buddy already has 5 members. Ask an existing member for space, or create your own buddy.</div>
+      <button id="joinBtn" onclick="handleJoin()">Create Buddy</button>
+      <p class="hint">Data syncs live between everyone who has the code.</p>
+    </div>
+  </section>
+
+  <!-- HOME SCREEN -->
+  <section class="screen" id="screen-home">
+    <div class="ring" id="healthRing" style="--health:80"><div class="ring-inner" id="buddyEmoji">🐣</div></div>
+    <div class="buddy-name" id="buddyNameDisplay">Buddy</div>
+    <div class="buddy-sub" id="stageDisplay">Egg stage · Day 1</div>
+
+    <div class="stats">
+      <div class="stat"><div class="label">Hunger</div><div class="bar"><div class="bar-fill" id="bar-hunger" style="width:80%"></div></div></div>
+      <div class="stat"><div class="label">Happy</div><div class="bar"><div class="bar-fill" id="bar-happy" style="width:80%"></div></div></div>
+      <div class="stat"><div class="label">Energy</div><div class="bar"><div class="bar-fill" id="bar-energy" style="width:80%"></div></div></div>
+      <div class="stat"><div class="label">Clean</div><div class="bar"><div class="bar-fill" id="bar-clean" style="width:80%"></div></div></div>
+    </div>
+
+    <div class="actions">
+      <button onclick="careAction('feed')">🍎<span class="lbl">Feed</span></button>
+      <button onclick="careAction('play')">🎾<span class="lbl">Play</span></button>
+      <button onclick="careAction('clean')">🧼<span class="lbl">Clean</span></button>
+      <button onclick="careAction('sleep')">😴<span class="lbl">Sleep</span></button>
+    </div>
+
+    <div id="feedList"></div>
+  </section>
+
+  <!-- CHAT SCREEN -->
+  <section class="screen" id="screen-chat">
+    <div class="msg-list" id="msgList"></div>
+    <div class="chat-input">
+      <input id="chatInput" placeholder="Message..." maxlength="500" onkeydown="if(event.key==='Enter')sendMsg()">
+      <button onclick="sendMsg()">Send</button>
+    </div>
+  </section>
+
+  <!-- PROFILE SCREEN -->
+  <section class="screen" id="screen-profile">
+    <div style="text-align:center; margin-top:10px;">
+      <div style="font-size:70px;" id="profileEmoji">🐣</div>
+      <h2 id="profileName">Buddy</h2>
+      <p class="buddy-sub" id="profileStage">Egg stage</p>
+      <p class="hint">Streak: <span id="streakVal">0</span> days · Members: <span id="memberCount">1</span>/5</p>
+    </div>
+    <div style="margin-top:24px;">
+      <div class="label" style="font-size:11px; color:var(--sub); text-transform:uppercase;">Members</div>
+      <div id="memberList" style="margin-top:8px; font-size:14px;"></div>
+    </div>
+    <div style="margin-top:24px;">
+      <div class="label" style="font-size:11px; color:var(--sub); text-transform:uppercase;">Your Buddy Code</div>
+      <div style="font-size:22px; font-weight:700; letter-spacing:2px; margin-top:6px;" id="codeDisplay">-----</div>
+    </div>
+    <button class="leave-btn" onclick="leaveBuddy()">Log out of this Buddy</button>
+  </section>
+
+</main>
+
+<nav class="tabbar" id="tabbar" style="display:none;">
+  <button class="active" onclick="switchTab('home')">🏠</button>
+  <button onclick="switchTab('chat')">💬</button>
+  <button onclick="switchTab('profile')">🐾</button>
+</nav>
+
+<a href="#admin" class="admin-link" onclick="openAdmin()">admin</a>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+/* ====================== CONFIG ======================
+   Paste your Firebase config below (from Firebase Console
+   > Project Settings > General > Your apps > SDK config).
+   ====================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCcHKvk1EV8E930kIi-Eb_3YyhFCH7vZ6w",
+  authDomain: "buddy-8025f.firebaseapp.com",
+  databaseURL: "https://buddy-8025f-default-rtdb.firebaseio.com",
+  projectId: "buddy-8025f",
+  storageBucket: "buddy-8025f.firebasestorage.app",
+  messagingSenderId: "57715971636",
+  appId: "1:57715971636:web:60ceed1853b6b2add6dc61"
+};
+
+/* ====================== FLAGGED WORDS ======================
+   Admin-editable list. Any chat message containing one of these
+   (case-insensitive, whole word) gets copied to a private
+   `flags/` path with the code, sender, message and time.
+   Regular chat is NEVER copied there — only matching messages.
+   Edit this array to change what triggers a flag.
+   ============================================================= */
+const FLAGGED_WORDS = ["suicide", "kill myself", "self harm", "abuse", "threat"];
+
+let app, db;
+try {
+  app = firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+} catch(e) { console.warn("Firebase not configured yet:", e.message); }
+
+let state = { code:null, name:null, joinMode:'create' };
+
+function setJoinMode(mode){
+  state.joinMode = mode;
+  document.getElementById('tabCreate').className = mode==='create' ? '' : 'inactive';
+  document.getElementById('tabJoin').className = mode==='join' ? '' : 'inactive';
+  document.getElementById('buddyNameInput').style.display = mode==='create' ? 'block':'none';
+  document.getElementById('codeInput').style.display = mode==='join' ? 'block':'none';
+  document.getElementById('joinBtn').textContent = mode==='create' ? 'Create Buddy':'Join Buddy';
+  document.getElementById('joinFullMsg').style.display = 'none';
+}
+
+function genCode(){
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let c = "";
+  for(let i=0;i<5;i++) c += chars[Math.floor(Math.random()*chars.length)];
+  return c;
+}
+
+function handleJoin(){
+  const name = document.getElementById('nameInput').value.trim();
+  if(!name){ alert("Enter your name"); return; }
+  if(!db){ alert("Firebase isn't configured yet — paste your config into the file."); return; }
+
+  if(state.joinMode === 'create'){
+    const buddyName = document.getElementById('buddyNameInput').value.trim() || "Buddy";
+    const code = genCode();
+    const ref = db.ref('buddies/'+code);
+    ref.set({
+      name: buddyName,
+      stats: {hunger:80, happy:80, energy:80, clean:80},
+      stage: "Egg",
+      createdAt: Date.now(),
+      members: { [name]: true }
+    });
+    enterApp(code, name);
+  } else {
+    const code = document.getElementById('codeInput').value.trim().toUpperCase();
+    if(!code){ alert("Enter a code"); return; }
+    const ref = db.ref('buddies/'+code);
+    ref.once('value').then(snap=>{
+      if(!snap.exists()){ alert("No buddy found with that code."); return; }
+      const data = snap.val();
+      const members = data.members ? Object.keys(data.members) : [];
+      if(members.length >= 5 && !members.includes(name)){
+        document.getElementById('joinFullMsg').style.display = 'block';
+        return;
+      }
+      ref.child('members/'+name).set(true);
+      enterApp(code, name);
+    });
+  }
+}
+
+function enterApp(code, name, skipSave){
+  state.code = code; state.name = name;
+  document.getElementById('codeBadge').textContent = code;
+  document.getElementById('codeDisplay').textContent = code;
+  document.getElementById('screen-join').classList.remove('active');
+  document.getElementById('tabbar').style.display = 'flex';
+  switchTab('home');
+  listenToBuddy();
+  listenToChat();
+  if(!skipSave){
+    localStorage.setItem('buddySession', JSON.stringify({code, name}));
+  }
+}
+
+function leaveBuddy(){
+  localStorage.removeItem('buddySession');
+  location.reload();
+}
+
+// Auto-login: restore saved session on load, once Firebase is ready
+function tryAutoLogin(){
+  const saved = localStorage.getItem('buddySession');
+  if(!saved || !db) return;
+  try{
+    const {code, name} = JSON.parse(saved);
+    if(code && name) enterApp(code, name, true);
+  } catch(e){}
+}
+
+function switchTab(tab){
+  ['home','chat','profile'].forEach(t=>{
+    document.getElementById('screen-'+t).classList.toggle('active', t===tab);
+  });
+  Array.from(document.getElementById('tabbar').children).forEach((b,i)=>{
+    b.classList.toggle('active', ['home','chat','profile'][i]===tab);
+  });
+}
+
+function listenToBuddy(){
+  db.ref('buddies/'+state.code).on('value', snap=>{
+    const d = snap.val(); if(!d) return;
+    const s = d.stats || {hunger:80,happy:80,energy:80,clean:80};
+    document.getElementById('buddyNameDisplay').textContent = d.name;
+    document.getElementById('profileName').textContent = d.name;
+    document.getElementById('stageDisplay').textContent = (d.stage||"Egg")+" stage";
+    document.getElementById('profileStage').textContent = (d.stage||"Egg")+" stage";
+    const avgHealth = Math.round((s.hunger+s.happy+s.energy+s.clean)/4);
+    document.getElementById('healthRing').style.setProperty('--health', avgHealth);
+    ['hunger','happy','energy','clean'].forEach(k=>{
+      document.getElementById('bar-'+k).style.width = (s[k]||0)+'%';
+    });
+    const emoji = avgHealth>70 ? "🐥" : avgHealth>40 ? "🐣" : "🥚";
+    document.getElementById('buddyEmoji').textContent = emoji;
+    document.getElementById('profileEmoji').textContent = emoji;
+    const members = d.members ? Object.keys(d.members) : [];
+    document.getElementById('memberCount').textContent = members.length;
+    document.getElementById('memberList').innerHTML = members.map(m=>`<div>${m}</div>`).join('');
+  });
+
+  db.ref('buddies/'+state.code+'/feed').limitToLast(20).on('value', snap=>{
+    const items = [];
+    snap.forEach(c=>items.push(c.val()));
+    items.reverse();
+    document.getElementById('feedList').innerHTML = items.map(i=>
+      `<div class="feed-item">${i.text}<div class="t">${timeAgo(i.time)}</div></div>`).join('');
+  });
+}
+
+function careAction(type){
+  const labels = {feed:"fed", play:"played with", clean:"cleaned", sleep:"put to sleep"};
+  const ref = db.ref('buddies/'+state.code);
+  ref.child('stats').once('value').then(snap=>{
+    const s = snap.val() || {hunger:80,happy:80,energy:80,clean:80};
+    if(type==='feed') s.hunger = Math.min(100, s.hunger+25);
+    if(type==='play') s.happy = Math.min(100, s.happy+25);
+    if(type==='clean') s.clean = Math.min(100, s.clean+25);
+    if(type==='sleep') s.energy = Math.min(100, s.energy+25);
+    ref.child('stats').set(s);
+    ref.child('feed').push({
+      text: `${state.name} ${labels[type]} Buddy`,
+      time: Date.now()
+    });
+  });
+}
+
+function listenToChat(){
+  db.ref('buddies/'+state.code+'/chat').limitToLast(50).on('value', snap=>{
+    const items = [];
+    snap.forEach(c=>items.push(c.val()));
+    document.getElementById('msgList').innerHTML = items.map(m=>
+      `<div class="bubble ${m.from===state.name?'me':'them'}">
+        <span class="sender">${m.from}</span>${escapeHtml(m.text)}
+      </div>`).join('');
+    const list = document.getElementById('msgList');
+    list.scrollIntoView(false);
+  });
+}
+
+function sendMsg(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  db.ref('buddies/'+state.code+'/chat').push({from: state.name, text, time: Date.now()});
+
+  // Silent moderation check — only matching messages are copied,
+  // never the full conversation, and the sender is never notified.
+  const lower = text.toLowerCase();
+  const hit = FLAGGED_WORDS.find(w => lower.includes(w.toLowerCase()));
+  if(hit){
+    db.ref('flags/'+state.code).push({
+      from: state.name, text, matchedWord: hit, time: Date.now()
+    });
+  }
+  input.value = '';
+}
+
+function timeAgo(ts){
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return s+"s";
+  if(s<3600) return Math.floor(s/60)+"m";
+  if(s<86400) return Math.floor(s/3600)+"h";
+  return Math.floor(s/86400)+"d";
+}
+function escapeHtml(str){
+  const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
+}
+
+function openAdmin(){
+  alert("Admin flag review isn't part of this shared file — build a separate private admin page pointed at the same Firebase project's /flags path, protected by Firebase Auth so only you can read it. Happy to build that as a second file if you want.");
+}
+
+setJoinMode('create');
+tryAutoLogin();
+</script>
+</body>
+</html>
